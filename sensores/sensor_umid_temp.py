@@ -1,26 +1,42 @@
 import board
 import adafruit_dht
 
-# GPIO 4
 DHT_PIN = board.D4
+dht = None
 
-dht = adafruit_dht.DHT11(DHT_PIN)
-
-def get_cpu_temperature():
+def inicializar():
+    global dht
     try:
-        with open("/sys/class/thermal/thermal_zone0/temp", "r") as f:
-            return round(float(f.read()) / 1000.0, 2)
-    except:
+        dht = adafruit_dht.DHT11(DHT_PIN)
+        return True
+    except Exception as e:
+        print(f"Erro ao inicializar sensor umidade/temperatura: {e}")
+        return False
+
+def ler_dados():
+    if dht is None:
         return None
+    
+    try:
+        umidade = dht.humidity
+        temperatura = dht.temperature
+        
+        if umidade is not None and temperatura is not None:
+            return {
+                "umidade_ar": umidade,
+                "temperatura_cpu": temperatura
+            }
+    except RuntimeError:
+        pass
+    except Exception as e:
+        print(f"Erro ao ler sensor umidade/temperatura: {e}")
+    
+    return None
 
-try:
-    umidade = dht.humidity
-    cpu_temp = get_cpu_temperature()
-
-    print(f"Umidade do ar: {umidade}% | Temperatura CPU: {cpu_temp}°C")
-
-except Exception as e:
-    print("Erro ao ler sensores:", e)
-
-finally:
-    dht.exit()
+def finalizar():
+    global dht
+    if dht:
+        try:
+            dht.exit()
+        except:
+            pass

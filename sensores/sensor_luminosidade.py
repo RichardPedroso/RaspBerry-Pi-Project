@@ -1,17 +1,17 @@
 import RPi.GPIO as GPIO
 
-TOUCH_PIN = 27
+LUZ_PIN = 18
 inicializado = False
 
 def inicializar():
     global inicializado
     try:
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(TOUCH_PIN, GPIO.IN)
+        GPIO.setup(LUZ_PIN, GPIO.IN)
         inicializado = True
         return True
     except Exception as e:
-        print(f"Erro ao inicializar sensor de presença: {e}")
+        print(f"Erro ao inicializar sensor de luminosidade: {e}")
         return False
 
 def ler_dados():
@@ -19,10 +19,10 @@ def ler_dados():
         return None
     
     try:
-        estado = GPIO.input(TOUCH_PIN)
-        return {"presenca_toque": estado}
+        luz = GPIO.input(LUZ_PIN)
+        return {"luminosidade_digital": luz}
     except Exception as e:
-        print(f"Erro ao ler sensor de presença: {e}")
+        print(f"Erro ao ler sensor de luminosidade: {e}")
         return None
 
 def finalizar():
