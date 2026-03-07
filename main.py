@@ -1,6 +1,7 @@
 import time
+import subprocess
+import os
 from utils.data_handler import DataHandler
-from utils.crypto_handler import criptografar_json
 
 # Importar sensores (comente a linha para desabilitar um sensor)
 from sensores import sensor_umid_temp
@@ -9,7 +10,8 @@ from sensores import sensor_luminosidade
 
 # Configurações
 INTERVALO_LEITURA = 5  # segundos
-LEITURAS_ANTES_CRIPTOGRAFAR = 6
+TOTAL_LEITURAS = 6
+SCP_DESTINO = "aluno@192.168.0.2:/home/aluno/Desktop/projeto"
 
 def main():
     print("=== Sistema de Coleta de Sensores ===\n")
@@ -42,7 +44,7 @@ def main():
     
     try:
         while True:
-            print(f"[Leitura {contador_leituras + 1}/{LEITURAS_ANTES_CRIPTOGRAFAR}]")
+            print(f"[Leitura {contador_leituras + 1}/{TOTAL_LEITURAS}]")
             
             # Coletar dados de todos os sensores ativos
             for nome, sensor in sensores_ativos:
@@ -60,15 +62,27 @@ def main():
             
             contador_leituras += 1
             
-            # Criptografar após N leituras
-            if contador_leituras >= LEITURAS_ANTES_CRIPTOGRAFAR:
-                print("="*60)
-                print("🔐 INICIANDO CRIPTOGRAFIA DOS DADOS")
-                print("="*60)
-                
-                criptografar_json(data_handler.arquivo)
-                
+            # Finalizar após N leituras
+            if contador_leituras >= TOTAL_LEITURAS:
                 print("✅ Processo concluído!")
+                
+                # Enviar JSON via SCP
+                arquivo_path = os.path.abspath(data_handler.arquivo)
+                print(f"\n📤 Enviando {data_handler.arquivo} via SCP...")
+                try:
+                    resultado = subprocess.run(
+                        ["scp", arquivo_path, SCP_DESTINO],
+                        capture_output=True,
+                        text=True,
+                        timeout=30
+                    )
+                    if resultado.returncode == 0:
+                        print("✅ Arquivo enviado com sucesso!")
+                    else:
+                        print(f"❌ Erro ao enviar: {resultado.stderr}")
+                except Exception as e:
+                    print(f"❌ Falha no envio: {e}")
+                
                 break
             
             # Limpar dados para próxima leitura
