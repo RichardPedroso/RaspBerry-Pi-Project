@@ -37,6 +37,7 @@ def main():
     
     # Inicializar gerenciador de dados
     data_handler = DataHandler()
+    data_handler.tracker.start()
     contador_leituras = 0
     
     try:
@@ -52,7 +53,9 @@ def main():
                         print(f"  {chave}: {valor}")
             
             # Salvar JSON
-            dados_salvos = data_handler.salvar_json()
+            emissions = data_handler.tracker.stop()
+            data_handler.tracker.start()
+            dados_salvos = data_handler.salvar_json(emissions)
             print(f"✓ Dados salvos em JSON\n")
             
             contador_leituras += 1
@@ -78,6 +81,7 @@ def main():
         print("\n\n⚠️  Coleta interrompida pelo usuário")
     
     finally:
+        data_handler.tracker.stop()
         # Finalizar sensores
         print("\nFinalizando sensores...")
         for nome, sensor in sensores_ativos:
