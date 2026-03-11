@@ -52,7 +52,28 @@ class DataHandler:
         with open(self.arquivo, "w") as f:
             json.dump(dados_acumulados, f, indent=4)
         
-        return dados
+        # Gerar hash do arquivo JSON completo
+        hash_arquivo = self.gerar_hash_arquivo()
+        
+        return dados, hash_arquivo
+    
+    def gerar_hash_arquivo(self):
+        """Gera hash SHA256 do arquivo JSON completo"""
+        with open(self.arquivo, "rb") as f:
+            conteudo = f.read()
+            return hashlib.sha256(conteudo).hexdigest()
+    
+    def salvar_hash(self, hash_valor):
+        """Salva o hash em arquivo .txt separado"""
+        arquivo_hash = self.arquivo.replace(".json", "_hash.txt")
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        
+        with open(arquivo_hash, "w") as f:
+            f.write(f"Hash SHA256 do arquivo: {self.arquivo}\n")
+            f.write(f"Timestamp: {timestamp}\n")
+            f.write(f"Hash: {hash_valor}\n")
+        
+        return arquivo_hash
     
     def limpar_dados(self):
         self.dados_sensores = {}

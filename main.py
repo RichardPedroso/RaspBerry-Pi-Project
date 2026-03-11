@@ -57,8 +57,10 @@ def main():
             # Salvar JSON
             emissions = data_handler.tracker.stop()
             data_handler.tracker.start()
-            dados_salvos = data_handler.salvar_json(emissions)
-            print(f"✓ Dados salvos em JSON\n")
+            dados_salvos, hash_arquivo = data_handler.salvar_json(emissions)
+            arquivo_hash = data_handler.salvar_hash(hash_arquivo)
+            print(f"✓ Dados salvos em JSON")
+            print(f"✓ Hash gerado: {hash_arquivo[:16]}...\n")
             
             contador_leituras += 1
             
@@ -66,22 +68,41 @@ def main():
             if contador_leituras >= TOTAL_LEITURAS:
                 print("✅ Processo concluído!")
                 
-                # Enviar JSON via SCP
-                arquivo_path = os.path.abspath(data_handler.arquivo)
-                print(f"\n📤 Enviando {data_handler.arquivo} via SCP...")
+                # Enviar JSON e Hash via SCP
+                arquivo_json = os.path.abspath(data_handler.arquivo)
+                arquivo_hash = arquivo_json.replace(".json", "_hash.txt")
+                
+                print(f"\n📤 Enviando arquivos via SCP...")
+                
+                # Enviar JSON
                 try:
-                    resultado = subprocess.run(
-                        ["scp", arquivo_path, SCP_DESTINO],
+                    resultado_json = subprocess.run(
+                        ["scp", arquivo_json, SCP_DESTINO],
                         capture_output=True,
                         text=True,
                         timeout=30
                     )
-                    if resultado.returncode == 0:
-                        print("✅ Arquivo enviado com sucesso!")
+                    if resultado_json.returncode == 0:
+                        print(f"✅ {data_handler.arquivo} enviado com sucesso!")
                     else:
-                        print(f"❌ Erro ao enviar: {resultado.stderr}")
+                        print(f"❌ Erro ao enviar JSON: {resultado_json.stderr}")
                 except Exception as e:
-                    print(f"❌ Falha no envio: {e}")
+                    print(f"❌ Falha no envio do JSON: {e}")
+                
+                # Enviar Hash
+                try:
+                    resultado_hash = subprocess.run(
+                        ["scp", arquivo_hash, SCP_DESTINO],
+                        capture_output=True,
+                        text=True,
+                        timeout=30
+                    )
+                    if resultado_hash.returncode == 0:
+                        print(f"✅ Hash enviado com sucesso!")
+                    else:
+                        print(f"❌ Erro ao enviar Hash: {resultado_hash.stderr}")
+                except Exception as e:
+                    print(f"❌ Falha no envio do Hash: {e}")
                 
                 break
             
