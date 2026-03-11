@@ -103,4 +103,16 @@ def main():
         print("✓ Sistema encerrado\n")
 
 if __name__ == "__main__":
-    main()
+    # Configurar crontab para execução automática
+    print("=== CONFIGURANDO EXECUÇÃO AUTOMÁTICA ===\n")
+    try:
+        from utils.setup_crontab import configurar_crontab
+        configurar_crontab()
+        print("\n" + "="*60)
+        print("✅ Sistema configurado!")
+        print("O main.py será executado automaticamente a cada 1 minuto.")
+        print("="*60 + "\n")
+    except Exception as e:
+        print(f"❌ Erro ao configurar crontab: {e}")
+        print("Executando coleta única...\n")
+        main()
