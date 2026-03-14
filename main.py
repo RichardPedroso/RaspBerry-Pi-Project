@@ -1,6 +1,7 @@
 import time
 import subprocess
 import os
+import logging
 from utils.data_handler import DataHandler
 
 # Importar sensores (comente a linha para desabilitar um sensor)
@@ -11,71 +12,70 @@ from sensores import sensor_luminosidade
 # Configurações
 INTERVALO_LEITURA = 5  # segundos
 TOTAL_LEITURAS = 6
-SCP_DESTINO = "aluno@192.168.0.2:/home/aluno/Desktop/projeto"
+INTERVALO_ENTRE_CICLOS = 60  # 1 minuto
+SCP_DESTINO = "aluno@192.168.0.2:/home/aluno/Desktop/projeto/"
 
-def main():
-    print("=== Sistema de Coleta de Sensores ===\n")
-    
-    # Inicializar sensores
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(message)s',
+    handlers=[logging.FileHandler('envios.log')]
+)
+
+def coletar_e_enviar():
+    """Executa um ciclo completo de coleta e envio"""
     sensores_ativos = []
+    data_handler = None
     
     if sensor_umid_temp.inicializar():
         sensores_ativos.append(("Umidade/Temperatura", sensor_umid_temp))
-        print("✓ Sensor Umidade/Temperatura inicializado")
     
     if sensor_de_presenca.inicializar():
         sensores_ativos.append(("Presença", sensor_de_presenca))
-        print("✓ Sensor Presença inicializado")
     
     if sensor_luminosidade.inicializar():
         sensores_ativos.append(("Luminosidade", sensor_luminosidade))
-        print("✓ Sensor Luminosidade inicializado")
     
     if not sensores_ativos:
-        print("\n❌ Nenhum sensor foi inicializado. Encerrando...")
+        logging.error("Nenhum sensor inicializado")
+        print("❌ Nenhum sensor inicializado")
         return
     
-    print(f"\n{len(sensores_ativos)} sensor(es) ativo(s)\n")
+    print(f"{len(sensores_ativos)} sensor(es) ativo(s)")
     
-    # Inicializar gerenciador de dados
     data_handler = DataHandler()
-    data_handler.tracker.start()
+    data_handler.iniciar_tracker()
     contador_leituras = 0
     
     try:
         while True:
-            print(f"[Leitura {contador_leituras + 1}/{TOTAL_LEITURAS}]")
+            print(f"Leitura {contador_leituras + 1}/{TOTAL_LEITURAS}")
             
-            # Coletar dados de todos os sensores ativos
             for nome, sensor in sensores_ativos:
                 dados = sensor.ler_dados()
                 if dados:
                     for chave, valor in dados.items():
                         data_handler.adicionar_sensor(chave, valor)
-                        print(f"  {chave}: {valor}")
             
-            # Salvar JSON
-            emissions = data_handler.tracker.stop()
-            data_handler.tracker.start()
-            dados_salvos, hash_arquivo = data_handler.salvar_json(emissions)
-            arquivo_hash = data_handler.salvar_hash(hash_arquivo)
-            print(f"✓ Dados salvos em JSON")
-            print(f"✓ Hash gerado: {hash_arquivo[:16]}...\n")
+            emissions = data_handler.parar_tracker()
+            data_handler.iniciar_tracker()
+            data_handler.salvar_json(emissions)
             
             contador_leituras += 1
             
-            # Finalizar após N leituras
             if contador_leituras >= TOTAL_LEITURAS:
-                print("✅ Processo concluído!")
+                print("✅ Coleta concluída")
                 
-                # Enviar JSON e Hash via SCP
+                hash_arquivo = data_handler.gerar_hash_arquivo()
+                data_handler.salvar_hash(hash_arquivo)
+                
                 arquivo_json = os.path.abspath(data_handler.arquivo)
                 arquivo_hash = arquivo_json.replace(".json", "_hash.txt")
                 
-                print(f"\n📤 Enviando arquivos via SCP...")
+                print("📤 Enviando arquivos...")
                 
-                # Enviar JSON
                 try:
+                    logging.info(f"Enviando: {arquivo_json} -> {SCP_DESTINO}")
                     resultado_json = subprocess.run(
                         ["scp", arquivo_json, SCP_DESTINO],
                         capture_output=True,
@@ -83,14 +83,15 @@ def main():
                         timeout=30
                     )
                     if resultado_json.returncode == 0:
-                        print(f"✅ {data_handler.arquivo} enviado com sucesso!")
+                        logging.info(f"✓ JSON enviado")
+                        print("✅ JSON enviado")
                     else:
-                        print(f"❌ Erro ao enviar JSON: {resultado_json.stderr}")
+                        logging.error(f"Erro JSON: {resultado_json.stderr}")
                 except Exception as e:
-                    print(f"❌ Falha no envio do JSON: {e}")
+                    logging.error(f"Falha JSON: {e}")
                 
-                # Enviar Hash
                 try:
+                    logging.info(f"Enviando: {arquivo_hash} -> {SCP_DESTINO}")
                     resultado_hash = subprocess.run(
                         ["scp", arquivo_hash, SCP_DESTINO],
                         capture_output=True,
@@ -98,42 +99,47 @@ def main():
                         timeout=30
                     )
                     if resultado_hash.returncode == 0:
-                        print(f"✅ Hash enviado com sucesso!")
+                        logging.info(f"✓ Hash enviado")
+                        print("✅ Hash enviado")
                     else:
-                        print(f"❌ Erro ao enviar Hash: {resultado_hash.stderr}")
+                        logging.error(f"Erro Hash: {resultado_hash.stderr}")
                 except Exception as e:
-                    print(f"❌ Falha no envio do Hash: {e}")
+                    logging.error(f"Falha Hash: {e}")
                 
+                data_handler.limpar_arquivo_json()
+                logging.info("Ciclo concluído")
                 break
             
-            # Limpar dados para próxima leitura
             data_handler.limpar_dados()
-            
-            # Aguardar próxima leitura
             time.sleep(INTERVALO_LEITURA)
     
     except KeyboardInterrupt:
-        print("\n\n⚠️  Coleta interrompida pelo usuário")
+        print("\n⚠️ Interrompido")
     
     finally:
-        data_handler.tracker.stop()
-        # Finalizar sensores
-        print("\nFinalizando sensores...")
+        if data_handler:
+            data_handler.parar_tracker()
         for nome, sensor in sensores_ativos:
             sensor.finalizar()
-        print("✓ Sistema encerrado\n")
 
 if __name__ == "__main__":
-    # Configurar crontab para execução automática
-    print("=== CONFIGURANDO EXECUÇÃO AUTOMÁTICA ===\n")
+    logging.info("Sistema iniciado")
+    print("=== SISTEMA DE COLETA CONTÍNUA ===")
+    print(f"Intervalo: {INTERVALO_ENTRE_CICLOS}s\n")
+    
+    ciclo = 1
     try:
-        from utils.setup_crontab import configurar_crontab
-        configurar_crontab()
-        print("\n" + "="*60)
-        print("✅ Sistema configurado!")
-        print("O main.py será executado automaticamente a cada 1 minuto.")
-        print("="*60 + "\n")
-    except Exception as e:
-        print(f"❌ Erro ao configurar crontab: {e}")
-        print("Executando coleta única...\n")
-        main()
+        while True:
+            print(f"[CICLO {ciclo}]")
+            logging.info(f"Ciclo {ciclo} iniciado")
+            
+            coletar_e_enviar()
+            
+            print(f"\n⏳ Aguardando {INTERVALO_ENTRE_CICLOS}s...\n")
+            time.sleep(INTERVALO_ENTRE_CICLOS)
+            
+            ciclo += 1
+    
+    except KeyboardInterrupt:
+        print("\n✓ Encerrado")
+        logging.info("Sistema encerrado")
