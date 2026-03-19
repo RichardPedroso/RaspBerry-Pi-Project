@@ -1,7 +1,7 @@
 import board
 import adafruit_dht
 
-DHT_PIN = board.D4
+DHT_PIN = board.D22
 dht = None
 
 def inicializar():
