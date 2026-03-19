@@ -11,6 +11,7 @@ class DataHandler:
         self.tempo_inicio = time.time()
         self.tracker = None
         self.sensor_ids = {}
+        self.contador_coleta = 0
     
     def iniciar_tracker(self):
         """Inicializa o tracker de emissões"""
@@ -30,14 +31,19 @@ class DataHandler:
         self.dados_sensores[nome_sensor] = {"sensor_id": self.sensor_ids[nome_sensor], "valor": valor}
     
     def gerar_json(self, emissions):
+        self.contador_coleta += 1
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         uptime = round(time.time() - self.tempo_inicio, 2)
         
+        id_coleta = f"coleta_{self.contador_coleta}"
+        
         dados_completos = {
-            "timestamp": timestamp,
-            "uptime_segundos": uptime,
-            "sensores": self.dados_sensores,
-            "pegada_carbono_gramas": round(emissions * 1000, 6) if emissions else 0
+            id_coleta: {
+                "timestamp": timestamp,
+                "uptime_segundos": uptime,
+                "sensores": self.dados_sensores,
+                "pegada_carbono_gramas": round(emissions * 1000, 6) if emissions else 0
+            }
         }
         
         return dados_completos
@@ -45,15 +51,15 @@ class DataHandler:
     def salvar_json(self, emissions=0):
         dados = self.gerar_json(emissions)
         
-        dados_acumulados = []
+        dados_acumulados = {}
         if os.path.exists(self.arquivo):
             with open(self.arquivo, "r") as f:
                 try:
                     dados_acumulados = json.load(f)
                 except:
-                    dados_acumulados = []
+                    dados_acumulados = {}
         
-        dados_acumulados.append(dados)
+        dados_acumulados.update(dados)
         
         with open(self.arquivo, "w") as f:
             json.dump(dados_acumulados, f, indent=4)
@@ -67,6 +73,7 @@ class DataHandler:
         arquivo_hash = self.arquivo.replace(".json", "_hash.txt")
         if os.path.exists(arquivo_hash):
             os.remove(arquivo_hash)
+        self.contador_coleta = 0
     
     def gerar_hash_arquivo(self):
         """Gera hash SHA256 do arquivo JSON completo"""

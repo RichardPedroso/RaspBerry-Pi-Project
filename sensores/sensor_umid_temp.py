@@ -24,7 +24,7 @@ def ler_dados():
         if umidade is not None and temperatura is not None:
             return {
                 "umidade_ar": umidade,
-                "temperatura_cpu": temperatura
+                "temperatura": temperatura
             }
     except RuntimeError:
         pass
