@@ -10,9 +10,9 @@ from sensores import sensor_de_presenca
 from sensores import sensor_luminosidade
 
 # Configurações
-INTERVALO_LEITURA = 5  # segundos
+INTERVALO_LEITURA = 3  # segundos
 TOTAL_LEITURAS = 6
-INTERVALO_ENTRE_CICLOS = 60  # 1 minuto
+INTERVALO_ENTRE_CICLOS = 10  # 1 minuto
 SCP_DESTINO = "aluno@192.168.0.2:/home/aluno/Desktop/projeto/"
 
 # Configurar logging
