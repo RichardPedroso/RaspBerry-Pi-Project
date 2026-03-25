@@ -85,10 +85,21 @@ class DataHandler:
         """Salva o hash em arquivo .txt separado"""
         arquivo_hash = self.arquivo.replace(".json", "_hash.txt")
         
-        with open(arquivo_hash, "w") as f:
-            f.write(hash_valor)
-        
-        return arquivo_hash
+        try:
+            # Remover arquivo existente se houver problema de permissão
+            if os.path.exists(arquivo_hash):
+                os.chmod(arquivo_hash, 0o666)
+            
+            with open(arquivo_hash, "w") as f:
+                f.write(hash_valor)
+            
+            return arquivo_hash
+        except PermissionError:
+            # Tentar em diretório temporário
+            arquivo_hash = f"/tmp/{os.path.basename(arquivo_hash)}"
+            with open(arquivo_hash, "w") as f:
+                f.write(hash_valor)
+            return arquivo_hash
     
     def limpar_dados(self):
         self.dados_sensores = {}

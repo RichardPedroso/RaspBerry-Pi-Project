@@ -1,6 +1,6 @@
 import RPi.GPIO as GPIO
 
-LUZ_PIN = 18
+LUZ_PIN = 17
 inicializado = False
 
 def inicializar():
