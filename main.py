@@ -33,8 +33,9 @@ def coletar_e_enviar():
     if sensor_de_presenca.inicializar():
         sensores_ativos.append(("Presença", sensor_de_presenca))
     
-    if sensor_luminosidade.inicializar():
-        sensores_ativos.append(("Luminosidade", sensor_luminosidade))
+    # Sensor de luminosidade desabilitado
+    # if sensor_luminosidade.inicializar():
+    #     sensores_ativos.append(("Luminosidade", sensor_luminosidade))
     
     if not sensores_ativos:
         logging.error("Nenhum sensor inicializado")
